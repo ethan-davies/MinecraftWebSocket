@@ -10,7 +10,6 @@ interface messageData {
     equippedCosmetics?: string[]
 }
 
-export let connectedUsers1: {}[] = [];
 
 export default class MessageHandler {
   private ws: WebSocket;
@@ -24,12 +23,10 @@ export default class MessageHandler {
   }
 
   private isMessageData(data: any): data is messageData {
-  return (
-    typeof data === 'object' &&
-    'username' in data &&
-    'equippedCosmetics' in data
-  );
-}
+    return typeof data === 'object' && 'username' in data;
+  }
+
+
 
 
   private async handleMessage(message: messageData) {
@@ -53,7 +50,6 @@ export default class MessageHandler {
               const equippedCosmetics = jsonObject.equippedCosmetics;
 
               await WebSocketManager.updatePlayerCosmetics(username, equippedCosmetics)
-              Logger.debug('Username: ' + username + ' Cosmetics: ' + equippedCosmetics)
               sendMessage = (JSON.stringify({status: 200, body: 'RECEIVED, UPDATED COSMETICS'}))
 
 
@@ -66,13 +62,26 @@ export default class MessageHandler {
         case 'TEST':
             sendMessage = (JSON.stringify({status: 200, body: 'RECEIVED TEST MESSAGE'}))
             break;
+
         case 'GET_COSMETICS':
-            if(this.isMessageData(jsonObject)) {
-                const username = jsonObject.username;
-                const cosmetics = await WebSocketManager.getPlayersOwnedCosmetics(username)
-                sendMessage = (JSON.stringify({status: 200, body: cosmetics}))
+          if (this.isMessageData(jsonObject)) {
+            const username = jsonObject.username;
+            
+            // Find the user in connectedUsers list
+            const user = connectedUsers.find((user) => user.username === username);
+
+            if (user) {
+              const equippedCosmetics = user.equippedCosmetics;
+              const jsonResponse = JSON.stringify({ status: 200, body: equippedCosmetics });
+              sendMessage = jsonResponse;
+            } else {
+              sendMessage = JSON.stringify({ status: 422, body: 'USER NOT FOUND' });
             }
-            break;
+          } else {
+            sendMessage = JSON.stringify({ status: 422, body: 'INVALID USERNAME' });
+          }
+          break;
+
         }
 
         if(!this.isTypeValid(message.type)) {
