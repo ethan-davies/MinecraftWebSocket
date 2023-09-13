@@ -7,7 +7,9 @@ const socket = new WebSocket(serverUrl);
 socket.addEventListener('open', (event) => {
   // Code that will run when the connection is opened
   console.log('WebSocket connection established:', event);
-  socket.send(JSON.stringify({type: 'TEST', data: 'In the "TEST" case this data section is usless, except is required'}));
+  socket.send(JSON.stringify({type: 'UPDATE_COSMETICS', data: {username: 'testUsername', equippedCosmetics: ['cosmeticOne', 'cosmeticTwo']}})) // !! This message is REQUIRED !!
+  socket.send(JSON.stringify({ type: 'GET_COSMETICS', data: { username: 'testUsername' } }));
+
 });
 
 socket.addEventListener('message', (event) => {
