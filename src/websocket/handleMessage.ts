@@ -1,10 +1,15 @@
-import Logger from '@/utils/Logger';
+import Logger from '../utils/Logger';
 import { validMessageTypes } from './enums';
+import WebSocketManager from '../utils/apiManager';
+import { connectedUsers } from '../utils/apiManager';
 
 interface messageData {
     type: string,
     data: string,
+    username?: string,
+    equippedCosmetics?: string[]
 }
+
 
 export default class MessageHandler {
   private ws: WebSocket;
@@ -17,20 +22,66 @@ export default class MessageHandler {
       return Object.values(validMessageTypes).includes(type)
   }
 
-  private handleMessage(message: messageData) {
+  private isMessageData(data: any): data is messageData {
+    return typeof data === 'object' && 'username' in data;
+  }
+
+
+
+
+  private async handleMessage(message: messageData) {
     let sendMessage: string
 
     if(message.type === undefined || message.data === undefined) {
+        Logger.error('MESSAGE DOESNT MATCH REQUIRED FORMAT: ' + JSON.stringify(message));
         sendMessage = (JSON.stringify({status: 422, body: 'INVALID MESSAGE'}))
         this.sendMessage(sendMessage);
         return;
     }
 
+    const jsonObject = message.data
     switch (message.type.toUpperCase()) {
         default: 
             sendMessage = (JSON.stringify({status: 200, body: 'RECEIVED UNKNOWN MESSAGE'}))
+        case 'UPDATE_COSMETICS':
+            if (this.isMessageData(jsonObject)) {
+              // You can now safely access the properties
+              const username = jsonObject.username;
+              const equippedCosmetics = jsonObject.equippedCosmetics;
+
+              await WebSocketManager.updatePlayerCosmetics(username, equippedCosmetics)
+              sendMessage = (JSON.stringify({status: 200, body: 'RECEIVED, UPDATED COSMETICS'}))
+
+
+            } else {
+              sendMessage = (JSON.stringify({status: 422, body: 'INVALID EQUIPPED COSMETICS OR USERNAME'}))
+              console.error('Invalid message data format');
+            }
+            break;
+
         case 'TEST':
             sendMessage = (JSON.stringify({status: 200, body: 'RECEIVED TEST MESSAGE'}))
+            break;
+
+        case 'GET_COSMETICS':
+          if (this.isMessageData(jsonObject)) {
+            const username = jsonObject.username;
+            
+            // Find the user in connectedUsers list
+            const user = connectedUsers.find((user) => user.username === username);
+
+            if (user) {
+              const equippedCosmetics = user.equippedCosmetics;
+              const jsonResponse = JSON.stringify({ status: 200, body: equippedCosmetics });
+              sendMessage = jsonResponse;
+            } else {
+              sendMessage = JSON.stringify({ status: 422, body: 'USER NOT FOUND' });
+            }
+          } else {
+            sendMessage = JSON.stringify({ status: 422, body: 'INVALID USERNAME' });
+          }
+          break;
+
         }
 
         if(!this.isTypeValid(message.type)) {
