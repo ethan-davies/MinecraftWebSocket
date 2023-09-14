@@ -11,7 +11,7 @@ export const connectedUsers: { username: string; equippedCosmetics: string[] }[]
 
 export default class WebSocketManager {
   public static async getPlayersOwnedCosmetics(username: string): Promise<string> {
-    const apiURI = `http://localhost:8080/user/${username}`;
+    const apiURI = `http://localhost:8080/cosmetics/${username}`; // Change this to your API URI
 
     try {
       const response: AxiosResponse<ExpectedAPIResponse[]> = await axios.get(apiURI);
